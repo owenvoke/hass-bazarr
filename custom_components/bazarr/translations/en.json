@@ -1,0 +1,45 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Service is already configured",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Re-configuration was successful",
+      "unknown": "Unexpected error"
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_api_key": "Invalid API key"
+    },
+    "flow_title": "{name}",
+    "step": {
+      "reauth_confirm": {
+        "description": "The Bazarr integration needs to be manually re-authenticated. Please check the API key at: {api_token_url}",
+        "title": "Authentication expired for {name}",
+        "data": {
+          "api_key": "API key"
+        }
+      },
+      "user": {
+        "data": {
+          "api_key": "API key",
+          "url": "URL"
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "health": {
+        "name": "Health"
+      }
+    },
+    "sensor": {
+      "wanted_movies": {
+        "name": "Wanted Movies"
+      },
+      "wanted_episodes": {
+        "name": "Wanted Episodes"
+      }
+    }
+  }
+}
