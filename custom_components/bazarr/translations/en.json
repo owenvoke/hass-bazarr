@@ -35,10 +35,12 @@
     },
     "sensor": {
       "wanted_movies": {
-        "name": "Wanted Movies"
+        "name": "Wanted Movies",
+        "unit_of_measurement": "movies"
       },
       "wanted_episodes": {
-        "name": "Wanted Episodes"
+        "name": "Wanted Episodes",
+        "unit_of_measurement": "episodes"
       }
     }
   }
