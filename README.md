@@ -41,6 +41,10 @@ page under the API section.
 
 The "Scan interval" can also be configured, this defaults to polling the API every 5 minutes.
 
+## Change log
+
+Please see [GitHub Releases][link-github-releases] for more information on what has changed recently.
+
 ## Security
 
 If you discover any security related issues, please email security@voke.dev instead of using the issue tracker.
@@ -71,6 +75,7 @@ Read more about Treeware at [treeware.earth][link-treeware].
 
 [link-releases]: https://github.com/owenvoke/hass-bazarr/releases
 [link-github-actions]: https://github.com/owenvoke/hass-bazarr/actions
+[link-github-releases]: https://github.com/owenvoke/hass-bazarr/releases
 [link-treeware]: https://treeware.earth
 [link-treeware-gifting]: https://ecologi.com/owenvoke?gift-trees
 [link-author]: https://github.com/owenvoke
