@@ -64,5 +64,5 @@ jobs:
         run: |
           gh release create ${{ needs.resolve-version.outputs.new-release-git-tag }} \
             --draft \
-            --title "${{ needs.resolve-version.outputs.new-release-git-tag }}" \
-            --notes "${{ needs.resolve-version.outputs.new-release-notes }}"
+            --title '${{ needs.resolve-version.outputs.new-release-git-tag }}' \
+            --notes '${{ needs.resolve-version.outputs.new-release-notes }}'
