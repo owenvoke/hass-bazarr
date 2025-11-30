@@ -30,13 +30,13 @@ jobs:
           node-version: "lts/*"
 
       - name: Install required dependencies
-        run: npm install -g semantic-release semantic-release-export-data conventional-changelog-conventionalcommits
+        run: npm install -g semantic-release @owenvoke/semantic-release-config
 
       - name: Resolve version
         id: get-next-version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release --dry-run
+        run: npx semantic-release -e @owenvoke/semantic-release-config --dry-run
 
   releaseDraft:
     name: Update draft release
