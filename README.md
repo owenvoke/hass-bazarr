@@ -5,7 +5,7 @@
 [![Build Status][ico-github-actions]][link-github-actions]
 [![Buy us a tree][ico-treeware-gifting]][link-treeware-gifting]
 
-A [Bazarr](https://bazarr.media) sensor for Home Assistant
+A [Bazarr](https://bazarr.media) integration for Home Assistant
 
 ## Install
 
@@ -30,16 +30,11 @@ A [Bazarr](https://bazarr.media) sensor for Home Assistant
 
 ## Usage
 
-This can be configured fully via the Integrations interface. Click the following link to add a new Bazarr site.
+This can be configured fully via the Integrations interface. Click the following link to add a new Bazarr instance.
 
 [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=bazarr)
 
-You'll need an API key from Bazarr, you can [generate one here](https://bazarr.app/user/api-tokens). You'll also need
-to know the id of the site, you can do this by browsing to the [sites](https://bazarr.app/sites) page, selecting the
-site you want to monitor, and copying the id from the URL. Alternatively, this is shown at the bottom of the settings
-page under the API section.
-
-The "Scan interval" can also be configured, this defaults to polling the API every 5 minutes.
+You'll need an API key from Bazarr, you can generate one from `Settings > General`.
 
 ## Change log
 
