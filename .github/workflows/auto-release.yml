@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
     outputs:
       new-release-published: ${{ steps.get-next-version.outputs.new-release-published }}
       new-release-version: ${{ steps.get-next-version.outputs.new-release-version }}
@@ -63,5 +62,6 @@ jobs:
         with:
           tag_name: ${{ needs.resolve-version.outputs.new-release-git-tag }}
           draft: true
+          prerelease: ${{ startsWith('v0.', needs.resolve-version.outputs.new-release-git-tag) || contains('-next', needs.resolve-version.outputs.new-release-git-tag) }}
           body: |
             ${{ needs.resolve-version.outputs.new-release-notes }}
