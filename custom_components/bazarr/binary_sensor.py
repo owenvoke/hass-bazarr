@@ -57,7 +57,7 @@ class BazarrHealthIssuesBinarySensor(
             "name": "Bazarr",
             "manufacturer": "Bazarr",
             "configuration_url": f"{self._entry.data['url']}",
-            "sw_version": self.coordinator.data['version'],
+            "sw_version": self.coordinator.data["version"],
         }
 
     @property
