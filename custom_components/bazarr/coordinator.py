@@ -90,7 +90,7 @@ class BazarrDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 "wanted_movies": badges_data.get("movies", 0),
                 "wanted_episodes": badges_data.get("episodes", 0),
                 "health_issues": health_data.get("data", []),
-                "version": status_data.get("bazarr_version", None),
+                "version": status_data.get("bazarr_version", "Unknown"),
             }
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise UpdateFailed(f"Error communicating with Bazarr API: {err}") from err
