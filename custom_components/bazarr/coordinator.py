@@ -78,10 +78,19 @@ class BazarrDataUpdateCoordinator(DataUpdateCoordinator[dict]):
                 response.raise_for_status()
                 health_data = await response.json()
 
+            # Fetch status data
+            status_url = f"{self.url}/api/system/status"
+            async with session.get(
+                status_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+            ) as response:
+                response.raise_for_status()
+                status_data = await response.json()
+
             return {
                 "wanted_movies": badges_data.get("movies", 0),
                 "wanted_episodes": badges_data.get("episodes", 0),
                 "health_issues": health_data.get("data", []),
+                "version": status_data.get("bazarr_version", None),
             }
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise UpdateFailed(f"Error communicating with Bazarr API: {err}") from err
