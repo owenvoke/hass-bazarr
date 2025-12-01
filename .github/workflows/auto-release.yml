@@ -1,4 +1,4 @@
-name: Release
+name: Auto-Release
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   resolve-version:
-    name: Resolve version
+    name: Resolve
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,8 +38,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release -e @owenvoke/semantic-release-config --dry-run
 
-  releaseDraft:
-    name: Update draft release
+  release-draft:
+    name: Draft
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -59,10 +59,9 @@ jobs:
             | xargs -I '{}' gh api -X DELETE repos/{owner}/{repo}/releases/{}
 
       - name: Create draft release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create ${{ needs.resolve-version.outputs.new-release-git-tag }} \
-            --draft \
-            --title '${{ needs.resolve-version.outputs.new-release-git-tag }}' \
-            --notes '${{ needs.resolve-version.outputs.new-release-notes }}'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve-version.outputs.new-release-git-tag }}
+          draft: true
+          body: |
+            ${{ needs.resolve-version.outputs.new-release-notes }}
