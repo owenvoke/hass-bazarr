@@ -85,6 +85,7 @@ class BazarrDataUpdateCoordinator(DataUpdateCoordinator[dict]):
             ) as response:
                 response.raise_for_status()
                 status_data = await response.json()
+                status_data = status_data.get("data", {})
 
             data = {
                 "wanted_movies": badges_data.get("movies", 0),
