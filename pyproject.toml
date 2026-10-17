@@ -26,4 +26,9 @@ lint = [
 ]
 
 [tool.black]
-target-version = ["py39", "py310", "py311"]
+target-version = ["py313"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

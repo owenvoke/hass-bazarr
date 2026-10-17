@@ -1,101 +1,76 @@
-"""DataUpdateCoordinator for Bazarr."""
+"""Data update coordinator for Bazarr."""
 
 from __future__ import annotations
 
-import asyncio
-from datetime import timedelta
 import logging
-
-import aiohttp
-from aiohttp import ClientResponseError
+from dataclasses import dataclass
+from datetime import timedelta
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_URL, CONF_API_KEY
+from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from httpcore import TimeoutException
 
-from .const import DOMAIN
+from .api import BazarrAuthError, BazarrClient, BazarrError
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+type BazarrConfigEntry = ConfigEntry[BazarrDataUpdateCoordinator]
 
-class BazarrDataUpdateCoordinator(DataUpdateCoordinator[dict]):
-    """Class to manage fetching Bazarr data."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        """Initialize the coordinator."""
+@dataclass(frozen=True)
+class BazarrData:
+    """The latest data from Bazarr."""
+
+    wanted_movies: int
+    wanted_episodes: int
+    health_issues: list[Any]
+    version: str
+
+
+class BazarrDataUpdateCoordinator(DataUpdateCoordinator[BazarrData]):
+    """Fetch data from a Bazarr instance."""
+
+    config_entry: BazarrConfigEntry
+
+    def __init__(self, hass: HomeAssistant, config_entry: BazarrConfigEntry) -> None:
+        """Initialise the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name=DOMAIN,
-            update_interval=timedelta(minutes=5),
+            update_interval=timedelta(minutes=DEFAULT_SCAN_INTERVAL),
         )
-        self.url = entry.data[CONF_URL]
-        self.api_token = entry.data[CONF_API_KEY]
+        self.url: str = config_entry.data[CONF_URL].rstrip("/")
+        self.client = BazarrClient(
+            async_get_clientsession(hass), self.url, config_entry.data[CONF_API_KEY]
+        )
 
-    async def ensure_tokens(self):
-        """Ensure that the API tokens are valid."""
-        session = async_get_clientsession(self.hass)
-        headers = {"X-API-KEY": self.api_token}
-        status_url = f"{self.url}/api/system/status"
-
+    async def _async_update_data(self) -> BazarrData:
+        """Fetch the latest data."""
         try:
-            async with session.get(
-                status_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                response.raise_for_status()
-        except ClientResponseError as err:
-            if err.status == 401:
-                raise ConfigEntryAuthFailed(err) from err
+            version = await self.client.version()
+            badges = await self.client.badges()
+            health = await self.client.health()
+        except BazarrAuthError as err:
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN, translation_key="invalid_auth"
+            ) from err
+        except BazarrError as err:
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="update_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
 
-        except (asyncio.TimeoutError, TimeoutException) as ex:
-            raise ConfigEntryNotReady(
-                f"Timed out while connecting to {self.url}"
-            ) from ex
-
-    async def _async_update_data(self) -> dict:
-        """Fetch data from Bazarr API."""
-        session = async_get_clientsession(self.hass)
-        headers = {"X-API-KEY": self.api_token}
-
-        try:
-            # Fetch badges data
-            badges_url = f"{self.url}/api/badges"
-            async with session.get(
-                badges_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                response.raise_for_status()
-                badges_data = await response.json()
-
-            # Fetch health data
-            health_url = f"{self.url}/api/system/health"
-            async with session.get(
-                health_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                response.raise_for_status()
-                health_data = await response.json()
-
-            # Fetch status data
-            status_url = f"{self.url}/api/system/status"
-            async with session.get(
-                status_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                response.raise_for_status()
-                status_data = await response.json()
-                status_data = status_data.get("data", {})
-
-            data = {
-                "wanted_movies": badges_data.get("movies", 0),
-                "wanted_episodes": badges_data.get("episodes", 0),
-                "health_issues": health_data.get("data", []),
-                "version": status_data.get("bazarr_version", "Unknown"),
-            }
-
-            _LOGGER.debug(f"Coordinator data: {data}")
-
-            return data
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise UpdateFailed(f"Error communicating with Bazarr API: {err}") from err
+        return BazarrData(
+            wanted_movies=badges.get("movies", 0),
+            wanted_episodes=badges.get("episodes", 0),
+            health_issues=health,
+            version=version,
+        )

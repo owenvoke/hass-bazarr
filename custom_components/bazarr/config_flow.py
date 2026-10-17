@@ -1,121 +1,144 @@
-"""Config flow for Bazarr integration."""
+"""Config flow for the Bazarr integration."""
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
-import aiohttp
 import voluptuous as vol
 import yarl
-
-from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult, SOURCE_REAUTH
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_API_KEY, CONF_URL
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 
+from .api import BazarrAuthError, BazarrClient, BazarrConnectionError, BazarrError
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+API_KEY_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
-    """Validate the user input allows us to connect."""
-    host = data[CONF_URL]
-    api_token = data[CONF_API_KEY]
+USER_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_URL): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.URL)
+        ),
+        vol.Required(CONF_API_KEY): API_KEY_SELECTOR,
+    }
+)
 
-    session = async_get_clientsession(hass)
+REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_API_KEY): API_KEY_SELECTOR})
+
+
+async def _async_validate(
+    hass: HomeAssistant, data: Mapping[str, Any]
+) -> dict[str, str]:
+    """Check Bazarr can be reached with the given details."""
+    client = BazarrClient(
+        async_get_clientsession(hass), data[CONF_URL], data[CONF_API_KEY]
+    )
     try:
-        url = f"{host}/api/system/status"
-        headers = {"X-API-KEY": api_token}
-        async with session.get(
-            url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-        ) as response:
-            response.raise_for_status()
-            result = await response.json()
-            if "data" not in result or "bazarr_version" not in result.get("data", {}):
-                raise CannotConnect
-    except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-        if isinstance(err, aiohttp.ClientResponseError and err.status == 401):
-            return {"base": "invalid_api_key"}
+        await client.version()
+    except BazarrAuthError:
+        return {"base": "invalid_api_key"}
+    except BazarrConnectionError:
         return {"base": "cannot_connect"}
-
+    except BazarrError:
+        return {"base": "not_bazarr"}
+    except Exception:
+        _LOGGER.exception("Unexpected error validating Bazarr")
+        return {"base": "unknown"}
     return {}
 
 
-class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Bazarr."""
+def _normalise(user_input: dict[str, Any]) -> dict[str, Any]:
+    return {**user_input, CONF_URL: user_input[CONF_URL].strip().rstrip("/")}
 
-    url: str
+
+class BazarrConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Config flow for Bazarr."""
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the URL and API key."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            user_input = _normalise(user_input)
+            self._async_abort_entries_match({CONF_URL: user_input[CONF_URL]})
+
+            errors = await _async_validate(self.hass, user_input)
+            if not errors:
+                host = yarl.URL(user_input[CONF_URL]).host or user_input[CONF_URL]
+                return self.async_create_entry(
+                    title=f"Bazarr ({host})", data=user_input
+                )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(USER_SCHEMA, user_input),
+            errors=errors,
+        )
 
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
-        """Handle configuration by re-auth."""
-        self.url = entry_data[CONF_URL]
+        """Handle a rejected API key."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm reauth dialog."""
+        """Ask for a new API key."""
         errors: dict[str, str] = {}
-        if user_input:
-            user_input = {**user_input, CONF_URL: self.url}
+        entry = self._get_reauth_entry()
 
-            errors = await validate_input(self.hass, user_input)
-
+        if user_input is not None:
+            errors = await _async_validate(self.hass, {**entry.data, **user_input})
             if not errors:
                 return self.async_update_reload_and_abort(
-                    self._get_reauth_entry(),
-                    data_updates={CONF_API_KEY: user_input[CONF_API_KEY]},
-                    reason="reauth_successful",
+                    entry, data_updates={CONF_API_KEY: user_input[CONF_API_KEY]}
                 )
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
-            description_placeholders={"api_token_url": f"{self.url}/settings/general"},
+            data_schema=REAUTH_SCHEMA,
+            description_placeholders={
+                "name": entry.title,
+                "api_token_url": f"{entry.data[CONF_URL]}/settings/general",
+            },
             errors=errors,
         )
 
-    async def async_step_user(
+    async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle the initial step."""
+    ) -> ConfigFlowResult:
+        """Change the URL or API key."""
         errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
 
         if user_input is not None:
-            self._async_abort_entries_match([{CONF_URL: user_input[CONF_URL]}])
+            user_input = _normalise(user_input)
+            if user_input[CONF_URL] != entry.data[CONF_URL]:
+                self._async_abort_entries_match({CONF_URL: user_input[CONF_URL]})
 
-            errors = await validate_input(self.hass, user_input)
-
+            errors = await _async_validate(self.hass, user_input)
             if not errors:
-                parsed = yarl.URL(user_input[CONF_URL])
-
-                return self.async_create_entry(
-                    title=f"Bazarr ({parsed.host})", data=user_input
+                return self.async_update_reload_and_abort(
+                    entry, data_updates=user_input
                 )
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_URL): str,
-                    vol.Required(CONF_API_KEY): str,
-                }
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                USER_SCHEMA, user_input or entry.data
             ),
             errors=errors,
         )
-
-
-class Unauthenticated(HomeAssistantError):
-    """Error to indicate invalid auth."""
-
-
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""

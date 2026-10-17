@@ -1,0 +1,8 @@
+{
+  "entity": {
+    "sensor": {
+      "wanted_movies": { "default": "mdi:movie-search" },
+      "wanted_episodes": { "default": "mdi:television-classic" }
+    }
+  }
+}

@@ -1,101 +1,65 @@
-"""Sensor platform for Bazarr integration."""
+"""Sensors for Bazarr."""
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from collections.abc import Callable
+from dataclasses import dataclass
 
-from . import BazarrConfigEntry
-from .const import DOMAIN
-from .coordinator import BazarrDataUpdateCoordinator
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorEntityDescription,
+    SensorStateClass,
+)
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+
+from .coordinator import BazarrConfigEntry, BazarrData
+from .entity import BazarrEntity
+
+PARALLEL_UPDATES = 0
+
+
+@dataclass(frozen=True, kw_only=True)
+class BazarrSensorEntityDescription(SensorEntityDescription):
+    """Describes a Bazarr sensor."""
+
+    value_fn: Callable[[BazarrData], int]
+
+
+SENSORS: tuple[BazarrSensorEntityDescription, ...] = (
+    BazarrSensorEntityDescription(
+        key="wanted_movies",
+        translation_key="wanted_movies",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.wanted_movies,
+    ),
+    BazarrSensorEntityDescription(
+        key="wanted_episodes",
+        translation_key="wanted_episodes",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.wanted_episodes,
+    ),
+)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: BazarrConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Bazarr sensors based on a config entry."""
-    coordinator = entry.runtime_data
-
+    """Set up the sensors."""
     async_add_entities(
-        [
-            BazarrWantedMoviesSensor(coordinator, entry),
-            BazarrWantedEpisodesSensor(coordinator, entry),
-        ]
+        BazarrSensor(entry.runtime_data, description, description.key)
+        for description in SENSORS
     )
 
 
-class BazarrSensorBase(CoordinatorEntity[BazarrDataUpdateCoordinator], SensorEntity):
-    """Base class for Bazarr sensors."""
+class BazarrSensor(BazarrEntity, SensorEntity):
+    """A count of wanted subtitles."""
 
-    _attr_has_entity_name = True
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(
-        self,
-        coordinator: BazarrDataUpdateCoordinator,
-        entry: BazarrConfigEntry,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator)
-        self._entry = entry
+    entity_description: BazarrSensorEntityDescription
 
     @property
-    def device_info(self):
-        """Return device information about this Bazarr instance."""
-        return {
-            "identifiers": {(DOMAIN, self._entry.entry_id)},
-            "name": "Bazarr",
-            "manufacturer": "Bazarr",
-            "configuration_url": f"{self._entry.data['url']}",
-            "sw_version": self.coordinator.data["version"],
-        }
-
-
-class BazarrWantedMoviesSensor(BazarrSensorBase):
-    """Sensor for wanted movies count."""
-
-    _attr_icon = "mdi:movie-search"
-    _attr_translation_key = "wanted_movies"
-
-    def __init__(
-        self,
-        coordinator: BazarrDataUpdateCoordinator,
-        entry: BazarrConfigEntry,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{entry.entry_id}_wanted_movies"
-
-    @property
-    def native_value(self) -> int | None:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
-            return self.coordinator.data.get("wanted_movies")
-        return None
-
-
-class BazarrWantedEpisodesSensor(BazarrSensorBase):
-    """Sensor for wanted episodes count."""
-
-    _attr_icon = "mdi:television-classic"
-    _attr_translation_key = "wanted_episodes"
-
-    def __init__(
-        self,
-        coordinator: BazarrDataUpdateCoordinator,
-        entry: BazarrConfigEntry,
-    ) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{entry.entry_id}_wanted_episodes"
-
-    @property
-    def native_value(self) -> int | None:
-        """Return the state of the sensor."""
-        if self.coordinator.data:
-            return self.coordinator.data.get("wanted_episodes")
-        return None
+    def native_value(self) -> int:
+        """Return the count."""
+        return self.entity_description.value_fn(self.coordinator.data)

@@ -1,28 +1,34 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Service is already configured",
-      "reauth_successful": "Re-authentication was successful",
-      "reconfigure_successful": "Re-configuration was successful",
-      "unknown": "Unexpected error"
+      "already_configured": "This Bazarr instance is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "Re-configuration was successful."
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "invalid_api_key": "Invalid API key"
+      "cannot_connect": "Could not connect to Bazarr. Check the URL and that the instance is reachable.",
+      "invalid_api_key": "Invalid API key.",
+      "not_bazarr": "The URL doesn't appear to be a Bazarr instance.",
+      "unknown": "Unexpected error."
     },
-    "flow_title": "{name}",
     "step": {
-      "reauth_confirm": {
-        "description": "The Bazarr integration needs to be manually re-authenticated. Please check the API key at: {api_token_url}",
-        "title": "Authentication expired for {name}",
-        "data": {
-          "api_key": "API key"
-        }
-      },
       "user": {
         "data": {
           "api_key": "API key",
           "url": "URL"
+        }
+      },
+      "reconfigure": {
+        "data": {
+          "api_key": "API key",
+          "url": "URL"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate {name}",
+        "description": "The API key is no longer valid. You can find it at: {api_token_url}",
+        "data": {
+          "api_key": "API key"
         }
       }
     }
@@ -35,13 +41,21 @@
     },
     "sensor": {
       "wanted_movies": {
-        "name": "Wanted Movies",
+        "name": "Wanted movies",
         "unit_of_measurement": "movies"
       },
       "wanted_episodes": {
-        "name": "Wanted Episodes",
+        "name": "Wanted episodes",
         "unit_of_measurement": "episodes"
       }
+    }
+  },
+  "exceptions": {
+    "invalid_auth": {
+      "message": "The Bazarr API key is no longer valid."
+    },
+    "update_failed": {
+      "message": "Could not fetch data from Bazarr: {error}"
     }
   }
 }

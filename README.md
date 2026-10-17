@@ -36,6 +36,8 @@ This can be configured fully via the Integrations interface. Click the following
 
 You'll need an API key from Bazarr, you can generate one from `Settings > General`.
 
+To change the URL or API key later, choose "Reconfigure" from the integration's menu.
+
 ## Change log
 
 Please see [GitHub Releases][link-github-releases] for more information on what has changed recently.
