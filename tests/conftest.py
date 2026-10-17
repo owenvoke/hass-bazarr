@@ -16,9 +16,8 @@ DATA = {CONF_URL: URL, CONF_API_KEY: "key"}
 
 
 @pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations):
+def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Enable custom integrations in every test."""
-    yield
 
 
 @pytest.fixture
