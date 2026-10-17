@@ -37,6 +37,26 @@ async def test_entities(
     assert device.sw_version == "1.5.3"
 
 
+async def test_device_version_follows_bazarr_upgrades(
+    hass: HomeAssistant, bazarr: AiohttpClientMocker, config_entry: MockConfigEntry
+) -> None:
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    bazarr.clear_requests()
+    bazarr.get(f"{URL}/api/system/status", json={"data": {"bazarr_version": "1.6.0"}})
+    bazarr.get(f"{URL}/api/badges", json={"movies": 3, "episodes": 12})
+    bazarr.get(f"{URL}/api/system/health", json={"data": []})
+    await config_entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, config_entry.entry_id), config_entry.entry_id
+    )
+    assert device.sw_version == "1.6.0"
+
+
 async def test_health_issues(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,

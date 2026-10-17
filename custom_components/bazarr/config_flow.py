@@ -9,7 +9,7 @@ from typing import Any
 import voluptuous as vol
 import yarl
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_API_KEY, CONF_URL
+from homeassistant.const import CONF_API_KEY, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
@@ -31,6 +31,7 @@ USER_SCHEMA = vol.Schema(
             TextSelectorConfig(type=TextSelectorType.URL)
         ),
         vol.Required(CONF_API_KEY): API_KEY_SELECTOR,
+        vol.Optional(CONF_VERIFY_SSL, default=True): bool,
     }
 )
 
@@ -42,7 +43,9 @@ async def _async_validate(
 ) -> dict[str, str]:
     """Check Bazarr can be reached with the given details."""
     client = BazarrClient(
-        async_get_clientsession(hass), data[CONF_URL], data[CONF_API_KEY]
+        async_get_clientsession(hass, verify_ssl=data.get(CONF_VERIFY_SSL, True)),
+        data[CONF_URL],
+        data[CONF_API_KEY],
     )
     try:
         await client.version()

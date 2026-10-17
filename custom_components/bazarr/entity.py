@@ -26,15 +26,13 @@ class BazarrEntity(CoordinatorEntity[BazarrDataUpdateCoordinator]):
         entry = coordinator.config_entry
         self.entity_description = description
         self._attr_unique_id = f"{entry.entry_id}_{unique_id_suffix}"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the Bazarr instance, including its current version."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.coordinator.config_entry.entry_id)},
+        # Only used when the device is created; the coordinator keeps the
+        # version up to date after that.
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
             name="Bazarr",
             entry_type=DeviceEntryType.SERVICE,
             manufacturer="Bazarr",
-            configuration_url=self.coordinator.url,
-            sw_version=self.coordinator.data.version,
+            configuration_url=coordinator.url,
+            sw_version=coordinator.data.version,
         )

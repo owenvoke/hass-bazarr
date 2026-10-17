@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from unittest.mock import patch
 
 import aiohttp
 import pytest
 from homeassistant import config_entries
-from homeassistant.const import CONF_API_KEY, CONF_URL
+from homeassistant.const import CONF_API_KEY, CONF_URL, CONF_VERIFY_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
@@ -29,7 +31,7 @@ async def test_user_flow(hass: HomeAssistant, bazarr: AiohttpClientMocker) -> No
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Bazarr (bazarr.local)"
-    assert result["data"] == DATA
+    assert result["data"] == {**DATA, CONF_VERIFY_SSL: True}
 
 
 @pytest.mark.parametrize(
@@ -103,4 +105,26 @@ async def test_reconfigure(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
-    assert config_entry.data == {CONF_URL: new_url, CONF_API_KEY: "key2"}
+    assert config_entry.data == {
+        CONF_URL: new_url,
+        CONF_API_KEY: "key2",
+        CONF_VERIFY_SSL: True,
+    }
+
+
+async def test_user_flow_without_ssl_verification(
+    hass: HomeAssistant, bazarr: AiohttpClientMocker
+) -> None:
+    with patch(
+        "custom_components.bazarr.config_flow.async_get_clientsession",
+        wraps=async_get_clientsession,
+    ) as get_session:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {**DATA, CONF_VERIFY_SSL: False}
+        )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_VERIFY_SSL] is False
+    get_session.assert_called_with(hass, verify_ssl=False)

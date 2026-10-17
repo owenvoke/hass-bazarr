@@ -15,13 +15,21 @@
       "user": {
         "data": {
           "api_key": "API key",
-          "url": "URL"
+          "url": "URL",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "verify_ssl": "Turn off if Bazarr uses a self-signed certificate."
         }
       },
       "reconfigure": {
         "data": {
           "api_key": "API key",
-          "url": "URL"
+          "url": "URL",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "verify_ssl": "Turn off if Bazarr uses a self-signed certificate."
         }
       },
       "reauth_confirm": {
