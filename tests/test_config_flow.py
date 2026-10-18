@@ -85,6 +85,8 @@ async def test_reauth(
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
     assert config_entry.data[CONF_API_KEY] == "new"
+    # Let the reload finish, so its update timer doesn't outlive the test.
+    await hass.async_block_till_done()
 
 
 async def test_reconfigure(
@@ -105,6 +107,7 @@ async def test_reconfigure(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
     assert config_entry.data == {
         CONF_URL: new_url,
         CONF_API_KEY: "key2",
