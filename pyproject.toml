@@ -5,6 +5,15 @@ build-backend = "hatchling.build"
 [project]
 name = "hass-bazarr"
 dynamic = ["version"]
+requires-python = ">=3.14.2"
+
+[project.optional-dependencies]
+lint = [
+    "ruff==0.17.1",
+]
+test = [
+    "pytest-homeassistant-custom-component==0.13.373",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["custom_components/bazarr"]
@@ -13,19 +22,22 @@ packages = ["custom_components/bazarr"]
 source = "vcs"
 
 [tool.hatch.envs.default]
-dependencies = [
-    "ruff",
-]
+# Through an extra rather than env dependencies, so Dependabot can see the pin.
+features = ["lint"]
 
 [tool.hatch.envs.default.scripts]
-test = [
-    "ruff check .",
-    "ruff format --check --diff .",
-]
 lint = [
-    "ruff check --fix .",
-    "ruff format .",
+    "ruff format --check --diff .",
+    "ruff check .",
 ]
+fix = [
+    "ruff format .",
+    "ruff check --fix .",
+]
+
+[tool.hatch.envs.test]
+python = "3.14"
+features = ["test"]
 
 [tool.ruff]
 target-version = "py314"
